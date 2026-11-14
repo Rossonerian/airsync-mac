@@ -26,8 +26,15 @@ jobs:
           -configuration "Self Compiled" \
           -destination "platform=macOS" \
           -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_ALLOWED=YES \
+          CODE_SIGN_IDENTITY=- \
           build
+
+    - name: Verify ad-hoc app signature
+      run: |
+        APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Self Compiled/AirSync.app"
+        codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+        codesign -dv --verbose=2 "$APP_PATH" 2>&1
 
     - name: Package and verify DMG
       run: |
@@ -37,7 +44,7 @@ jobs:
         test -d "$APP_PATH"
         hdiutil create -volname AirSync -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
         hdiutil verify "$DMG_PATH"
-        echo "DMG is unsigned and not notarized; no signing credentials were used."
+        echo "App is ad-hoc signed; DMG is unsigned and not notarized. No Developer ID credentials were used."
     - name: Upload Plus-enabled DMG
       uses: actions/upload-artifact@v4
       with:
