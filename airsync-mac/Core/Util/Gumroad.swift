@@ -59,15 +59,20 @@ class Gumroad {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
 
-        let bodyComponents: [String: String] = [
+        let bodyComponents = [
             "product_id": productID,
             "license_key": trimmedKey,
             "increment_uses_count": isNewRegistration ? "true" : "false"
         ]
 
-        request.httpBody = bodyComponents
-            .map { "\($0.key)=\($0.value)" }
-            .joined(separator: "&")
+        var form = URLComponents()
+        form.queryItems = bodyComponents.map { URLQueryItem(name: $0.key, value: $0.value) }
+        guard let encodedBody = form.percentEncodedQuery else {
+            throw LicenseCheckError.server("Could not encode the license verification request.")
+        }
+        request.httpBody = encodedBody
+            .replacingOccurrences(of: "+", with: "%2B")
+            .replacingOccurrences(of: "%20", with: "+")
             .data(using: .utf8)
 
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")

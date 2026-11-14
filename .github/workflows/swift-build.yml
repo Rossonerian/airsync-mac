@@ -1,4 +1,4 @@
-name: Swift Build and Debug Release
+name: Swift Build and Plus DMG
 
 on:
   workflow_dispatch:
@@ -20,36 +20,30 @@ jobs:
       with:
         xcode-version: latest
 
-    - name: Build Debug
+    - name: Build Plus-enabled app
       run: |
-        xcodebuild -scheme airsync-mac -configuration Debug clean build | xcpretty
+        xcodebuild \
+          -project AirSync.xcodeproj \
+          -scheme "AirSync Self Compiled" \
+          -configuration "Self Compiled" \
+          -destination "platform=macOS" \
+          -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+          CODE_SIGNING_ALLOWED=NO \
+          build
 
-    - name: Build Release
+    - name: Package and verify DMG
       run: |
-        xcodebuild -scheme airsync-mac -configuration Release clean build | xcpretty
-
-    - name: Archive Debug Build Artifacts
-      if: success()
-      run: |
-        mkdir -p build-artifacts/Debug
-        cp -R "$(xcodebuild -scheme airsync-mac -configuration Debug -showBuildSettings | grep -m 1 BUILD_DIR | awk '{print $3}')/Debug/"* build-artifacts/Debug/
-      shell: bash
-
-    - name: Archive Release Build Artifacts
-      if: success()
-      run: |
-        mkdir -p build-artifacts/Release
-        cp -R "$(xcodebuild -scheme airsync-mac -configuration Release -showBuildSettings | grep -m 1 BUILD_DIR | awk '{print $3}')/Release/"* build-artifacts/Release/
-      shell: bash
-
-    - name: Upload Debug Build Artifacts
+        set -euo pipefail
+        APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Self Compiled/AirSync.app"
+        DMG_PATH="$RUNNER_TEMP/AirSync-Plus.dmg"
+        test -d "$APP_PATH"
+        hdiutil create -volname AirSync -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+        hdiutil verify "$DMG_PATH"
+        echo "DMG is unsigned and not notarized; no signing credentials were used."
+    - name: Upload Plus-enabled DMG
       uses: actions/upload-artifact@v4
       with:
-        name: AirSync-Debug
-        path: build-artifacts/Debug
-
-    - name: Upload Release Build Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: AirSync-Release
-        path: build-artifacts/Release
+        name: AirSync-Plus-macOS
+        path: ${{ runner.temp }}/AirSync-Plus.dmg
+        if-no-files-found: error
+        retention-days: 7
