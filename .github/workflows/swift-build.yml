@@ -3,7 +3,7 @@ name: Swift Build and Plus DMG
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, rossonerian-make-airsync-features-work ]
   pull_request:
     branches: [ main ]
 
